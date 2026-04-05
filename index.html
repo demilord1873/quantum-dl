@@ -332,7 +332,7 @@ Formatting & Style: Use perfect English grammar, spacing, and punctuation. Be co
                     }
                     return null;
                } catch (error) {
-                    console.error("Tavily Error:", error);
+                    console.error("Search Error:", error);
                     return null;
                }
           }
@@ -352,7 +352,7 @@ Formatting & Style: Use perfect English grammar, spacing, and punctuation. Be co
 
                try {
                     // --- NEW: Await Tavily Search Context ---
-                    aiUI.container.innerHTML = `<span class="text-blue-400 font-mono text-xs uppercase tracking-wide">Searching web parameters...</span>`;
+                    aiUI.container.innerHTML = `<span class="text-blue-400 font-mono text-xs uppercase tracking-wide">Wait a sec...</span>`;
                     const searchContext = await fetchTavilyContext(text);
                     aiUI.container.innerHTML = `<span class="inline-block w-2 h-4 md:h-5 bg-blue-400 animate-pulse rounded-sm shadow-[0_0_8px_#4b90ff]"></span>`;
                     
