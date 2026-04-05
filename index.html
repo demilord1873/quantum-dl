@@ -362,7 +362,7 @@ Formatting & Style: Use perfect English grammar, spacing, and punctuation. Be co
                          finalPrompt = `You have access to the following real-time web search results to help answer the user's query. Incorporate this information naturally if it is helpful.\n\n### WEB SEARCH RESULTS ###\n${searchContext}\n\n### USER QUERY ###\n${text}`;
                     }
 
-                    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    const response = await fetch("https://api.groq.com/openai/v1", {
                          method: "POST",
                          headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
                          body: JSON.stringify({
