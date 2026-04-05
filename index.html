@@ -40,14 +40,12 @@
                     radial-gradient(circle at 15% 50%, rgba(75, 144, 255, 0.05), transparent 25%),
                     radial-gradient(circle at 85% 30%, rgba(189, 0, 255, 0.05), transparent 25%);
                color: var(--text-main);
-               /* Prevent bounce scroll on mobile */
                overscroll-behavior-y: none;
           }
 
           .font-space { font-family: 'Space Grotesk', sans-serif; }
           .font-mono { font-family: 'JetBrains Mono', monospace; }
 
-          /* Sleek Scrollbar Refinements */
           ::-webkit-scrollbar {
                width: 5px;
                height: 5px;
@@ -93,7 +91,6 @@
                color: var(--text-main);
           }
           
-          /* Mobile typography adjustments for prose */
           @media (max-width: 768px) {
                .prose { font-size: 0.95rem; }
           }
@@ -236,9 +233,10 @@
      </footer>
 
      <script>
-          const GROQ_API_KEY = "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";
+          // IMPORTANT: Replaced your actual GROQ key with a placeholder for security.
+          const GROQ_API_KEY = "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";
+          const TAVILY_API_KEY = "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"; 
           
-          // Re-implementing the fixed system prompt
           const SYSTEM_PROMPT = `Your name is Quantum, an advanced, lightning-fast chatbot intelligence designed for an exceptional user experience. You were developed on March 30, 2026. 
 
 Creator Info (Share ONLY if specifically asked): Your creator is Luis Dem, a 13-year-old tech enthusiast and visionary founder of DemLabs. He built Jason and Neon. You can learn more about him at https://demilord1.vercel.app. His father, David Dem, is a cryptocurrency investor and CEO of Bedix Media Communications. His mother, Ima Dem, is an award-winning broadcast journalist (12 years at Inspiration FM Uyo, two-time NACA award winner in 2021).
@@ -269,7 +267,6 @@ Formatting & Style: Use perfect English grammar, spacing, and punctuation. Be co
           });
 
           userInput.addEventListener('keydown', function (e) {
-               // Prevent enter on mobile from just creating newlines if they want to send
                if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     if (this.value.trim() !== '') chatForm.dispatchEvent(new Event('submit'));
@@ -309,6 +306,37 @@ Formatting & Style: Use perfect English grammar, spacing, and punctuation. Be co
                return { container: msgDiv.querySelector('.prose'), icon: msgDiv.querySelector('.ai-icon-loading') };
           };
 
+          // --- NEW: Tavily Search Function ---
+          async function fetchTavilyContext(query) {
+               try {
+                    const response = await fetch("https://api.tavily.com/search", {
+                         method: "POST",
+                         headers: {
+                              "Content-Type": "application/json"
+                         },
+                         body: JSON.stringify({
+                              api_key: TAVILY_API_KEY,
+                              query: query,
+                              search_depth: "advanced",
+                              include_answer: false,
+                              max_results: 5
+                         })
+                    });
+                    
+                    if (!response.ok) return null;
+                    
+                    const data = await response.json();
+                    if (data.results && data.results.length > 0) {
+                         // Format the results into a string for the LLM to read
+                         return data.results.map(r => `Source: ${r.url}\nContent: ${r.content}`).join('\n\n');
+                    }
+                    return null;
+               } catch (error) {
+                    console.error("Tavily Error:", error);
+                    return null;
+               }
+          }
+
           chatForm.addEventListener('submit', async (e) => {
                e.preventDefault();
                const text = userInput.value.trim();
@@ -318,22 +346,31 @@ Formatting & Style: Use perfect English grammar, spacing, and punctuation. Be co
                userInput.style.height = 'auto';
                submitBtn.disabled = true;
                
-               // Unfocus keyboard on mobile to allow viewing the response
                userInput.blur();
-
                addUserMessage(text);
                const aiUI = createAiMessageContainer();
 
                try {
+                    // --- NEW: Await Tavily Search Context ---
+                    aiUI.container.innerHTML = `<span class="text-blue-400 font-mono text-xs uppercase tracking-wide">Searching web parameters...</span>`;
+                    const searchContext = await fetchTavilyContext(text);
+                    aiUI.container.innerHTML = `<span class="inline-block w-2 h-4 md:h-5 bg-blue-400 animate-pulse rounded-sm shadow-[0_0_8px_#4b90ff]"></span>`;
+                    
+                    // --- NEW: Augment Prompt if context exists ---
+                    let finalPrompt = text;
+                    if (searchContext) {
+                         finalPrompt = `You have access to the following real-time web search results to help answer the user's query. Incorporate this information naturally if it is helpful.\n\n### WEB SEARCH RESULTS ###\n${searchContext}\n\n### USER QUERY ###\n${text}`;
+                    }
+
                     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                          method: "POST",
                          headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
                          body: JSON.stringify({
                               model: "llama-3.3-70b-versatile",
-                              messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: text }],
+                              messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: finalPrompt }],
                               temperature: 1.0,
                               top_p: 1,
-                              max_completion_tokens: 8192, // Lowered from 131072 to the max supported by Groq/Llama
+                              max_completion_tokens: 8192, 
                               stream: true,
                               stop: null
                          })
